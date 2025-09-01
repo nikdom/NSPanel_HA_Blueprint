@@ -24,10 +24,8 @@ Table of contents:
     - [Scheduled relay](#scheduled-relay)
     - [Scheduled climate](#scheduled-climate)
   - [Frameworks](#frameworks)
-    - [Framework `arduino`](#framework-arduino)
-    - [Framework `esp-idf`](#framework-esp-idf)
-  - [Bluetooth proxy](#bluetooth-proxy)
-  - [BLE tracker](#ble-tracker)
+    - [Framework `esp-idf` (RECOMMENDED)](#framework-esp-idf-recommended)
+    - [Framework `arduino` (DEPRECATED)](#framework-arduino-deprecated)
   - [Logger via UART](#logger-via-uart)
   - [Climate custom presets](#climate-custom-presets)
   - [Push button / Momentary switch](#push-button--momentary-switch)
@@ -94,9 +92,6 @@ packages:
     files:
       - nspanel_esphome.yaml # Basic package
       # Optional advanced and add-on configurations
-      # - esphome/nspanel_esphome_advanced.yaml
-      # - esphome/nspanel_esphome_addon_ble_tracker.yaml
-      # - esphome/nspanel_esphome_addon_bluetooth_proxy.yaml
       # - esphome/nspanel_esphome_addon_climate_cool.yaml
       # - esphome/nspanel_esphome_addon_climate_heat.yaml
       # - esphome/nspanel_esphome_addon_climate_dual.yaml
@@ -204,7 +199,7 @@ ota:
 ```
 
 ### Web server credentials
-By default, the web server credentials are defined by this project using `admin` as `username` and your `Wi-Fi password` as `password`, but you can replace it using this customization:
+By default, the web server credentials are defined by this project (advanced only) using `admin` as `username` and your `Wi-Fi password` as `password`, but you can replace it using this customization:
 
 ```yaml
 # Custom web server credentials
@@ -438,12 +433,12 @@ output:
           set_brightness->execute(current_brightness);
     
 script:
-  # Updates the existing `page_changed` script to update the `display_light` status when a page changes
-  - id: !extend page_changed
+  # Updates the existing `page_change` script to update the `display_light` status when a page changes
+  - id: !extend page_change
     then:
       - lambda: |-
-          ESP_LOGD("script.page_changed(custom)", "page: %s", current_page->state.c_str());
-          ESP_LOGV("script.page_changed(custom)", "is_on(): %s", display_light->current_values.is_on() ? "True" : "False");
+          ESP_LOGD("script.page_change(custom)", "page: %s", current_page->state.c_str());
+          ESP_LOGV("script.page_change(custom)", "is_on(): %s", display_light->current_values.is_on() ? "True" : "False");
           if (current_page->state == "screensaver" and display_light->current_values.is_on()) {
             auto call = display_light->turn_off();
             call.perform();
@@ -544,9 +539,19 @@ time:
 ```
 
 ### Frameworks
+<!-- markdownlint-disable MD028 -->
+> [!WARNING]
+> **Arduino framework support has been deprecated as of v4.3.22**. While existing configurations may continue to work,
+> Arduino framework is no longer officially supported or tested. New users should use ESP-IDF framework only.
+
 > [!IMPORTANT]
 > When switching between frameworks, make sure to update the device with a serial cable as the partition table is different between the two frameworks
-as [OTA Update Component](https://esphome.io/components/ota) updates will not change the partition table. While it will appear to work, the device will boot the old framework after a reset.
+> as [OTA Update Component](https://esphome.io/components/ota) updates will not change the partition table.
+> While it will appear to work, the device will boot the old framework after a reset.
+<!-- markdownlint-enable MD028 -->
+
+If you have absolute need to change framework via OTA, please ensure you flash your device twice in a row
+to increase the chances to have both partitions with the new firmware.
 
 This project currently uses `esp-idf` as default framework.
 You can overlap the settings with this customization.
@@ -555,44 +560,38 @@ You can overlap the settings with this customization.
 > For more info about frameworks, please visit [ESPHome docs](https://esphome.io/components/esp32).
 
 `esp-idf` is maintained by EspressIF and is kept updated,
-more boards are supported and the memory management is better, making it ideal if you wanna customize your panel to support memory consumption functionalities,
-like `bluetooth_proxy` or [Improv](https://www.improv-wifi.com/). Consequently, this project uses `esp-idf` as the default framework since `v4.3`. 
+more boards are supported and the memory management is better,
+making it ideal if you wanna customize your panel to support memory consumption functionalities,
+like `bluetooth_proxy` or [Improv](https://www.improv-wifi.com/).
+Consequently, this project uses `esp-idf` as the default framework since `v4.3.0`. 
 
-However, the `arduino` protocol still very popular and, therefore, more components are available and the project allows to switch between the frameworks 
-by adding the following lines in your panel's yaml file.
+~~However, the `arduino` protocol still very popular and, therefore, more components are available and the project allows to switch between the frameworks 
+by adding the following lines in your panel's yaml file.~~
 
-#### Framework `arduino`
+#### Framework `esp-idf` (RECOMMENDED)
+
 ```yaml
-# Change framework to `arduino`
-esp32:
-  framework:
-    type: arduino
-```
-#### Framework `esp-idf`
-```yaml
-# Change framework to `esp-idf`
-# (should not be required)
+# Change framework to esp-idf - should not be required as this is the default
 esp32:
   framework:
     type: esp-idf
 ```
 
-### Bluetooth Proxy
-Please refer to the "[Add-on: Bluetooth Proxy](addon_bluetooth_proxy.md)" guide.
+#### Framework `arduino` (DEPRECATED)
 
-### BLE Tracker
-Please refer to the "[Add-on: BLE Tracker Proxy](addon_ble_tracker.md)" guide.
+> [!WARNING]
+> **DEPRECATED:** Arduino framework support is no longer maintained or tested. Migration to ESP-IDF is strongly recommended.
+
+```yaml
+# Change framework to arduino - NOT RECOMMENDED
+esp32:
+  framework:
+    type: arduino
+```
 
 ### Logger via UART
 
-By default, the logging via hardware UART is disable in this project.
-You can enable it by setting the baud rate accordingly to your interface:
-
-```yaml
-# Enable hardware UART serial logging
-logger:
-  baud_rate: 115200
-```
+By default, the logging via hardware UART is enabled in this project since v4.3.22.
 
 ### Climate custom presets
 
@@ -715,10 +714,10 @@ switch:
 This can be useful to free-up memory, so other custom components could be used instead.
 
 ```yaml
-# Removes captive portal
+# Removes captive portal - Pre-built and advanced only
 captive_portal: !remove
 
-# Removes embedded web server
+# Removes embedded web server - Advanced only
 web_server: !remove
 ```
 
